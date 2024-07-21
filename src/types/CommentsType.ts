@@ -1,6 +1,6 @@
-export interface NoteType {
+export interface CommentsType {
   id: number;
   userId: number;
-  title: string;
+  noteId: number;
   body: string;
 }

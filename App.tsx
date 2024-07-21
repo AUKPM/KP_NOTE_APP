@@ -34,7 +34,7 @@ function App(): React.JSX.Element {
       <ImageBackground
         style={{flex: 1}}
         source={bgImagePath}
-        resizeMode="contain">
+        resizeMode="cover">
         <StatusBar
           barStyle={isDarkMode ? 'light-content' : 'dark-content'}
           backgroundColor={backgroundStyle.backgroundColor}

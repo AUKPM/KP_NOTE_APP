@@ -1,9 +1,9 @@
-import React, {useEffect, useState} from 'react';
+import React, {Fragment, useEffect, useState} from 'react';
 import {View, StyleSheet, ScrollView, SafeAreaView, Image} from 'react-native';
 import {Text, TextInput, Button, TouchableRipple} from 'react-native-paper';
 import Navbar from '../../components/Navbar/Navbar';
 import {getData, setData} from '../../utils/storage';
-import {Note} from '../../types/NoteType';
+import {NoteType} from '../../types/NoteType';
 import {
   ParamListBase,
   useFocusEffect,
@@ -22,13 +22,19 @@ const addImagePath = require('../../assets/image/add.png');
 const NoteScreen: React.FC<NoteScreenProps> = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const [searchValue, setSearchValue] = useState('');
-  const [noteData, setNoteData] = useState<Note[]>([]);
+  const [noteData, setNoteData] = useState<NoteType[]>([]);
 
   const fetchNoteData = async () => {
-    const noteData = await getData('noteData');
-    if (noteData) {
-      const sortedNotes = noteData.sort((a:string, b:string) => b.id - a.id);
-      setNoteData(sortedNotes);
+    try {
+      const storedData = await getData('noteData');
+      if (storedData) {
+        const noteData: NoteType[] = storedData;
+
+        const sortedNotes = noteData.sort((a, b) => b.id - a.id);
+        setNoteData(sortedNotes);
+      }
+    } catch (error) {
+      console.error('Failed to fetch note data:', error);
     }
   };
 
@@ -114,69 +120,83 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
 
   const filteredNotes = filterNotes(noteData, searchValue);
 
-  return (
-    <SafeAreaView style={{flex: 1, backgroundColor: '#2F4397'}}>
-      <View style={styles.noteScreenContainer}>
-        <Navbar
-          title=""
-          nextPage="NewNote"
-          style={{backgroundColor: '#2F4397'}}
-          contentRight={
-            <TouchableRipple onPress={() => navigation.navigate('NewNote')}>
-              <Image style={styles.btnAdd} source={addImagePath} />
-            </TouchableRipple>
-          }
-        />
-        <View style={styles.noteHeader}>
-          <View style={styles.noteHeaderTitle}>
-            <Text style={styles.noteHeaderTitleText}>
-              UX Fundamental Sharing
-            </Text>
-          </View>
-          <View style={styles.noteHeaderSubTitle}>
-            <Text style={styles.noteHeaderSubTitleText}>
-              Monday, July 20, 2024 10:00 PM
-            </Text>
-          </View>
-          <View style={styles.noteHeaderSearch}>
-            <TextInput
-              style={styles.noteHeaderSearchInput}
-              outlineColor="#2F4397"
-              activeOutlineColor="#2F4397"
-              theme={{roundness: 50}}
-              placeholder="Search"
-              mode="outlined"
-              value={searchValue}
-              onChangeText={value => setSearchValue(value)}
-            />
-          </View>
-        </View>
+  const handleEditNote = (note: NoteType) => {
+    navigation.navigate('NewNote', {note});
+  };
 
-        <View style={styles.listContainer}>
-          {filteredNotes.length > 0 ? (
-            <ScrollView style={styles.listContainerScrollView}>
-              {filteredNotes.map((note, index) => (
-                <View key={index} style={styles.itemContainer}>
-                  <View style={styles.itemTitle}>
-                    <Text style={styles.itemTitleText}>{note.title}</Text>
-                  </View>
-                  <View style={styles.itemBody}>
-                    <Text style={styles.itemBodyText}>{note.body}</Text>
-                  </View>
-                  {/* <View style={styles.itemFooter}>
-                <Text style={styles.itemFooterText}>UID : {note.userId}</Text>
-              </View> */}
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No Data</Text>
+  return (
+    <Fragment>
+      <SafeAreaView
+        style={{flex: 0, backgroundColor: '#2F4397'}}></SafeAreaView>
+      <SafeAreaView style={{flex: 1, backgroundColor: '#FFFFFF'}}>
+        <View style={styles.noteScreenContainer}>
+          <Navbar
+            title=""
+            nextPage="NewNote"
+            style={{backgroundColor: '#2F4397'}}
+            contentRight={
+              <TouchableRipple onPress={() => navigation.navigate('NewNote')}>
+                <Image style={styles.btnAdd} source={addImagePath} />
+              </TouchableRipple>
+            }
+          />
+          <View style={styles.noteHeader}>
+            <View style={styles.noteHeaderTitle}>
+              <Text style={styles.noteHeaderTitleText}>
+                My Notes
+              </Text>
             </View>
-          )}
+            <View style={styles.noteHeaderSubTitle}>
+              <Text style={styles.noteHeaderSubTitleText}>
+                Monday, July 20, 2024 10:00 PM
+              </Text>
+            </View>
+            <View style={styles.noteHeaderSearch}>
+              <TextInput
+                style={styles.noteHeaderSearchInput}
+                outlineColor="#2F4397"
+                activeOutlineColor="#2F4397"
+                theme={{roundness: 50}}
+                placeholder="Search"
+                mode="outlined"
+                value={searchValue}
+                onChangeText={value => setSearchValue(value)}
+              />
+            </View>
+          </View>
+
+          <View style={styles.listContainer}>
+            {filteredNotes.length > 0 ? (
+              <ScrollView style={styles.listContainerScrollView}>
+                {filteredNotes.map((note, index) => (
+                  <TouchableRipple
+                    style={styles.itemContainer}
+                    key={note.id}
+                    onPress={() => handleEditNote(note)}>
+                    <View key={index}>
+                      <View style={styles.itemTitle}>
+                        <Text style={styles.itemTitleText}>{note.title}</Text>
+                      </View>
+                      <View style={styles.itemBody}>
+                        <Text style={styles.itemBodyText}>{note.body}</Text>
+                      </View>
+
+                      {/* <View style={styles.itemFooter}>
+                        <Text style={styles.itemFooterText}>UID : {note.userId}</Text>
+                    </View> */}
+                    </View>
+                  </TouchableRipple>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Text style={styles.noDataText}>No Data</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </Fragment>
   );
 };
 
@@ -236,7 +256,7 @@ const styles = StyleSheet.create({
     color: '#2F4397',
   },
   itemBody: {
-    marginBottom: 8,
+    // marginBottom: 8,
   },
   itemBodyText: {
     fontSize: 14,
