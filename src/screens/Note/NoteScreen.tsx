@@ -138,8 +138,8 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
         <View style={styles.listContainer}>
           {filteredNotes.length > 0 ? (
             <ScrollView style={styles.listContainerScrollView}>
-              {filteredNotes.map(note => (
-                <View style={styles.itemContainer}>
+              {filteredNotes.map((note, index) => (
+                <View key={index} style={styles.itemContainer}>
                   <View style={styles.itemTitle}>
                     <Text style={styles.itemTitleText}>{note.title}</Text>
                   </View>
@@ -238,6 +238,8 @@ const styles = StyleSheet.create({
   },
   noDataText: {
     fontSize: 20,
+    fontWeight: '600',
+    color: '#2F4397',
     textAlign: 'center',
   },
 });
