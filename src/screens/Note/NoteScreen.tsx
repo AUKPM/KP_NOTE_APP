@@ -1,7 +1,15 @@
 import React, {useEffect, useState} from 'react';
-import {View, StyleSheet, ScrollView, SafeAreaView} from 'react-native';
-import {Text, TextInput, Button} from 'react-native-paper';
+import {View, StyleSheet, ScrollView, SafeAreaView, Image} from 'react-native';
+import {Text, TextInput, Button, TouchableRipple} from 'react-native-paper';
 import Navbar from '../../components/Navbar/Navbar';
+import {getData, setData} from '../../utils/storage';
+import {Note} from '../../types/NoteType';
+import {
+  ParamListBase,
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 interface NoteScreenProps {
   title?: string;
@@ -9,91 +17,91 @@ interface NoteScreenProps {
   background?: React.CSSProperties;
 }
 
-// import {useBackground} from '../../contexts/safeAreaViewBgColor';
+const addImagePath = require('../../assets/image/add.png');
 
 const NoteScreen: React.FC<NoteScreenProps> = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const [searchValue, setSearchValue] = useState('');
-  //   const {setBackgroundColor} = useBackground();
+  const [noteData, setNoteData] = useState<Note[]>([]);
 
-  //   useEffect(() => {
-  //     setBackgroundColor('#2F4397');
-  //     return () => setBackgroundColor('transparent');
-  //   }, [setBackgroundColor]);
-
-  const handleChangeUsername = (value: string) => {
-    setUsername(value);
+  const fetchNoteData = async () => {
+    const noteData = await getData('noteData');
+    if (noteData) {
+      const sortedNotes = noteData.sort((a:string, b:string) => b.id - a.id);
+      setNoteData(sortedNotes);
+    }
   };
 
-  const handleChangePassword = (value: string) => {
-    setPassword(value);
-  };
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchNoteData();
+    }, []),
+  );
 
   const userId = 1;
 
-  const noteData = [
-    {
-      id: 1,
-      userId: 1,
-      title: 'Note 1',
-      body: 'This is note 1 body.',
-    },
-    {
-      id: 2,
-      userId: 1,
-      title: 'Note 2',
-      body: 'This is note 2 body.',
-    },
-    {
-      id: 3,
-      userId: 1,
-      title: 'Note 3',
-      body: 'This is note 3 body.',
-    },
-    {
-      id: 4,
-      userId: 1,
-      title: 'Note 4',
-      body: 'This is note 4 body.',
-    },
-    {
-      id: 5,
-      userId: 1,
-      title: 'Note 5',
-      body: 'This is note 5 body.',
-    },
-    {
-      id: 6,
-      userId: 3,
-      title: 'Note 6',
-      body: 'This is note 6 body.',
-    },
-    {
-      id: 7,
-      userId: 4,
-      title: 'Note 7',
-      body: 'This is note 7 body.',
-    },
-    {
-      id: 8,
-      userId: 4,
-      title: 'Note 8',
-      body: 'This is note 8 body.',
-    },
-    {
-      id: 9,
-      userId: 5,
-      title: 'Note 9',
-      body: 'This is note 9 body.',
-    },
-    {
-      id: 10,
-      userId: 5,
-      title: 'Note 10',
-      body: 'This is note 10 body.',
-    },
-  ];
+  //   const noteData = [
+  //     {
+  //       id: 1,
+  //       userId: 1,
+  //       title: 'Note 1',
+  //       body: 'This is note 1 body.',
+  //     },
+  //     {
+  //       id: 2,
+  //       userId: 1,
+  //       title: 'Note 2',
+  //       body: 'This is note 2 body.',
+  //     },
+  //     {
+  //       id: 3,
+  //       userId: 1,
+  //       title: 'Note 3',
+  //       body: 'This is note 3 body.',
+  //     },
+  //     {
+  //       id: 4,
+  //       userId: 1,
+  //       title: 'Note 4',
+  //       body: 'This is note 4 body.',
+  //     },
+  //     {
+  //       id: 5,
+  //       userId: 1,
+  //       title: 'Note 5',
+  //       body: 'This is note 5 body.',
+  //     },
+  //     {
+  //       id: 6,
+  //       userId: 3,
+  //       title: 'Note 6',
+  //       body: 'This is note 6 body.',
+  //     },
+  //     {
+  //       id: 7,
+  //       userId: 4,
+  //       title: 'Note 7',
+  //       body: 'This is note 7 body.',
+  //     },
+  //     {
+  //       id: 8,
+  //       userId: 4,
+  //       title: 'Note 8',
+  //       body: 'This is note 8 body.',
+  //     },
+  //     {
+  //       id: 9,
+  //       userId: 5,
+  //       title: 'Note 9',
+  //       body: 'This is note 9 body.',
+  //     },
+  //     {
+  //       id: 10,
+  //       userId: 5,
+  //       title: 'Note 10',
+  //       body: 'This is note 10 body.',
+  //     },
+  //   ];
 
   const filterNotes = (notes: typeof noteData, search: string) => {
     return notes.filter(
@@ -109,7 +117,16 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
   return (
     <SafeAreaView style={{flex: 1, backgroundColor: '#2F4397'}}>
       <View style={styles.noteScreenContainer}>
-        <Navbar style={{backgroundColor: '#2F4397'}} title="" />
+        <Navbar
+          title=""
+          nextPage="NewNote"
+          style={{backgroundColor: '#2F4397'}}
+          contentRight={
+            <TouchableRipple onPress={() => navigation.navigate('NewNote')}>
+              <Image style={styles.btnAdd} source={addImagePath} />
+            </TouchableRipple>
+          }
+        />
         <View style={styles.noteHeader}>
           <View style={styles.noteHeaderTitle}>
             <Text style={styles.noteHeaderTitleText}>
@@ -241,6 +258,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2F4397',
     textAlign: 'center',
+  },
+  btnAdd: {
+    width: 35,
+    height: 35,
   },
 });
 
