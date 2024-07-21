@@ -1,29 +1,52 @@
 import React, {CSSProperties, useState} from 'react';
-import {View, StyleSheet, Alert, Image, ViewStyle} from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Alert,
+  Image,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 import {Text, TextInput, Button, TouchableRipple} from 'react-native-paper';
 import {ParamListBase, useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 interface NavbarProps {
   title?: string;
+  titleStyle?: TextStyle;
   description?: string;
   backgroundColor?: string;
   style?: ViewStyle;
   add?: Boolean;
   back?: Boolean;
+  nextPage?: string;
+  done?: Boolean;
+  contentRight?: React.ReactNode;
 }
 
-const addImagePath = require('../../assets/image/add.png');
-
 const Navbar: React.FC<NavbarProps> = props => {
-  const {title, description, backgroundColor, style, add, back} = props;
+  const {
+    title,
+    titleStyle,
+    description,
+    backgroundColor,
+    style,
+    add,
+    back,
+    nextPage,
+    done,
+    contentRight,
+  } = props;
+
+  const backImagePath = require('../../assets/image/back.png');
 
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
+ 
   return (
     <View style={[styles.container, style]}>
-      {back == false ? (
+      {back == true ? (
         <TouchableRipple onPress={() => navigation.goBack()}>
-          <Text style={styles.button}>Back</Text>
+          <Image style={styles.btnBack} source={backImagePath}></Image>
         </TouchableRipple>
       ) : (
         <View style={styles.userProfileContainer}>
@@ -41,15 +64,12 @@ const Navbar: React.FC<NavbarProps> = props => {
         </View>
       )}
 
-      <Text style={styles.title}>{title}</Text>
-      {add ? (
-        <TouchableRipple onPress={() => navigation.navigate('Home')}>
-          <Text style={styles.button}>Home</Text>
-        </TouchableRipple>
+      <Text style={[styles.title, titleStyle]}>{title}</Text>
+
+      {contentRight ? (
+        <View style={styles.contentRightContainer}>{contentRight}</View>
       ) : (
-        <TouchableRipple onPress={() => navigation.navigate('Home')}>
-          <Image style={styles.btnAdd} source={addImagePath} />
-        </TouchableRipple>
+        <View></View>
       )}
     </View>
   );
@@ -96,14 +116,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#007bff',
   },
-  btnAdd: {
+  btnBack:{
     width: 35,
-    height: 35,
+    height: 35
   },
   title: {
     fontSize: 18,
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
+  contentRightContainer: {},
 });
 
 export default Navbar;

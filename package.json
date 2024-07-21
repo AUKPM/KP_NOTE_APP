@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@okta/okta-react-native": "^2.12.0",
+    "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.10.1",
     "axios": "^1.7.2",
