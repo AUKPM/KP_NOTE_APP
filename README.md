@@ -32,7 +32,6 @@ For a mobile developer skills assessment test at Bangkok Bank.
 - TypeScript
 - Axios (for API requests)
 - React Navigation
-- Zustand (for state management)
 - React Native Paper
 
 <!---
