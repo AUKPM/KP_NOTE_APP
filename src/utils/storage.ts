@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+
 const setData = async (key: string, value: any) => {
   try {
     const jsonValue = JSON.stringify(value);
@@ -25,5 +26,6 @@ const removeData = async (key: string) => {
     console.error('Error removing data: ', e);
   }
 };
+
 
 export {setData, getData, removeData};

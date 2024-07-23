@@ -4,3 +4,13 @@ export interface NoteType {
   title: string;
   body: string;
 }
+
+export interface CreateNoteType {
+  title: string;
+  body: string;
+}
+
+export interface DeleteNoteType {
+  noteId: number;
+  body: string;
+}
