@@ -1,15 +1,28 @@
-import React, {Fragment, useEffect, useState} from 'react';
-import {View, StyleSheet, ScrollView, SafeAreaView, Image} from 'react-native';
+import React, {Fragment, useEffect, useLayoutEffect, useState} from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  Image,
+  ActivityIndicator,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import {Text, TextInput, Button, TouchableRipple} from 'react-native-paper';
 import Navbar from '../../components/Navbar/Navbar';
 import {getData, setData} from '../../utils/storage';
-import {NoteType} from '../../types/NoteType';
+import {NoteType, UserInfoType} from '../../types';
+import {getUserInfo} from '../../services/api/api/userSerivce';
+import {getNoteData} from '../../services/api/api/noteService';
 import {
   ParamListBase,
   useFocusEffect,
   useNavigation,
 } from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {checkIfAuth, formatDate} from '../../utils/utils';
+import Loading from '../../components/Loading/Loading';
+import {useMainContext} from '../../contexts/MainContext';
 
 interface NoteScreenProps {
   title?: string;
@@ -23,93 +36,103 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const [searchValue, setSearchValue] = useState('');
   const [noteData, setNoteData] = useState<NoteType[]>([]);
+  const [noteDataAuth, setNoteDataAuth] = useState<NoteType[]>([]);
+  const [isAuth, setIsAuth] = useState<Boolean>(false);
+  const [filteredNotes, setFilteredNotes] = useState<NoteType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const {menuVisible, toggleMenu, hideMenu} = useMainContext();
 
-  const fetchNoteData = async () => {
+  let isUserAuth;
+
+  //GUEST
+  const fetchNoteDataGuest = async () => {
     try {
-      const storedData = await getData('noteData');
-      if (storedData) {
-        const noteData: NoteType[] = storedData;
+      setIsLoading(true);
+      const data = await getData('noteData');
+      if (data) {
+        const noteData: NoteType[] = data;
 
         const sortedNotes = noteData.sort((a, b) => b.id - a.id);
         setNoteData(sortedNotes);
+        setFilteredNotes(filterNotes(sortedNotes, searchValue, 1));
       }
     } catch (error) {
-      console.error('Failed to fetch note data:', error);
+      console.error('Failed to fetch note data guest:', error);
     }
   };
 
+  const fetchNoteData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getNoteData();
+      const userInfo = await getData('userInfo');
+      if (userInfo) {
+        const userId = userInfo.id;
+        if (data) {
+          const noteData: NoteType[] = data;
+
+          const sortedNotes = noteData.sort((a, b) => b.id - a.id);
+          setNoteData(sortedNotes);
+        }
+        setNoteDataAuth(data);
+        setFilteredNotes(filterNotes(data, searchValue, userId));
+      }
+    } catch (error) {
+      console.error('Error fetch note data :', error);
+    }
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      isUserAuth = await checkIfAuth();
+      setIsAuth(!!isUserAuth);
+
+      if (!!isUserAuth === true) {
+        fetchNoteData();
+      } else {
+        fetchNoteDataGuest();
+      }
+      setIsLoading(false);
+    };
+
+    initialize();
+  }, []);
+
+  useEffect(() => {
+    const initialize = async () => {
+      isUserAuth = await checkIfAuth();
+      const userInfo = await getData('userInfo');
+      if (userInfo) {
+        const userId = userInfo ? userInfo.id : 1;
+        setIsAuth(!!isUserAuth);
+        if (!!isUserAuth === false) {
+          setFilteredNotes(filterNotes(noteData, searchValue, 1));
+        } else {
+          setFilteredNotes(filterNotes(noteDataAuth, searchValue, userId));
+        }
+      }
+    };
+    initialize();
+  }, [searchValue]);
+
   useFocusEffect(
     React.useCallback(() => {
-      fetchNoteData();
+      console.log('asdas');
+      const initializeCallback = async () => {
+        isUserAuth = await checkIfAuth();
+        if (!!isUserAuth === true) {
+          fetchNoteData();
+        } else {
+          fetchNoteDataGuest();
+        }
+        setIsLoading(false);
+      };
+      initializeCallback();
     }, []),
   );
 
-  const userId = 1;
-
-  //   const noteData = [
-  //     {
-  //       id: 1,
-  //       userId: 1,
-  //       title: 'Note 1',
-  //       body: 'This is note 1 body.',
-  //     },
-  //     {
-  //       id: 2,
-  //       userId: 1,
-  //       title: 'Note 2',
-  //       body: 'This is note 2 body.',
-  //     },
-  //     {
-  //       id: 3,
-  //       userId: 1,
-  //       title: 'Note 3',
-  //       body: 'This is note 3 body.',
-  //     },
-  //     {
-  //       id: 4,
-  //       userId: 1,
-  //       title: 'Note 4',
-  //       body: 'This is note 4 body.',
-  //     },
-  //     {
-  //       id: 5,
-  //       userId: 1,
-  //       title: 'Note 5',
-  //       body: 'This is note 5 body.',
-  //     },
-  //     {
-  //       id: 6,
-  //       userId: 3,
-  //       title: 'Note 6',
-  //       body: 'This is note 6 body.',
-  //     },
-  //     {
-  //       id: 7,
-  //       userId: 4,
-  //       title: 'Note 7',
-  //       body: 'This is note 7 body.',
-  //     },
-  //     {
-  //       id: 8,
-  //       userId: 4,
-  //       title: 'Note 8',
-  //       body: 'This is note 8 body.',
-  //     },
-  //     {
-  //       id: 9,
-  //       userId: 5,
-  //       title: 'Note 9',
-  //       body: 'This is note 9 body.',
-  //     },
-  //     {
-  //       id: 10,
-  //       userId: 5,
-  //       title: 'Note 10',
-  //       body: 'This is note 10 body.',
-  //     },
-  //   ];
-
-  const filterNotes = (notes: typeof noteData, search: string) => {
+  const filterNotes = (notes: NoteType[], search: string, userId: number) => {
     return notes.filter(
       note =>
         (note.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -118,83 +141,104 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
     );
   };
 
-  const filteredNotes = filterNotes(noteData, searchValue);
-
   const handleEditNote = (note: NoteType) => {
     navigation.navigate('NewNote', {note});
   };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const formattedDate = formatDate(currentDate);
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
     <Fragment>
       <SafeAreaView
         style={{flex: 0, backgroundColor: '#2F4397'}}></SafeAreaView>
       <SafeAreaView style={{flex: 1, backgroundColor: '#FFFFFF'}}>
-        <View style={styles.noteScreenContainer}>
-          <Navbar
-            title=""
-            nextPage="NewNote"
-            style={{backgroundColor: '#2F4397'}}
-            contentRight={
-              <TouchableRipple onPress={() => navigation.navigate('NewNote')}>
-                <Image style={styles.btnAdd} source={addImagePath} />
-              </TouchableRipple>
-            }
-          />
-          <View style={styles.noteHeader}>
-            <View style={styles.noteHeaderTitle}>
-              <Text style={styles.noteHeaderTitleText}>
-                My Notes
-              </Text>
-            </View>
-            <View style={styles.noteHeaderSubTitle}>
-              <Text style={styles.noteHeaderSubTitleText}>
-                Monday, July 20, 2024 10:00 PM
-              </Text>
-            </View>
-            <View style={styles.noteHeaderSearch}>
-              <TextInput
-                style={styles.noteHeaderSearchInput}
-                outlineColor="#2F4397"
-                activeOutlineColor="#2F4397"
-                theme={{roundness: 50}}
-                placeholder="Search"
-                mode="outlined"
-                value={searchValue}
-                onChangeText={value => setSearchValue(value)}
-              />
-            </View>
-          </View>
-
-          <View style={styles.listContainer}>
-            {filteredNotes.length > 0 ? (
-              <ScrollView style={styles.listContainerScrollView}>
-                {filteredNotes.map((note, index) => (
-                  <TouchableRipple
-                    style={styles.itemContainer}
-                    key={note.id}
-                    onPress={() => handleEditNote(note)}>
-                    <View key={index}>
-                      <View style={styles.itemTitle}>
-                        <Text style={styles.itemTitleText}>{note.title}</Text>
-                      </View>
-                      <View style={styles.itemBody}>
-                        <Text style={styles.itemBodyText}>{note.body}</Text>
-                      </View>
-
-                      {/* <View style={styles.itemFooter}>
-                        <Text style={styles.itemFooterText}>UID : {note.userId}</Text>
-                    </View> */}
-                    </View>
-                  </TouchableRipple>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.noDataContainer}>
-                <Text style={styles.noDataText}>No Data</Text>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            hideMenu();
+          }}>
+          <View style={styles.noteScreenContainer}>
+            <Navbar
+              title=""
+              nextPage="NewNote"
+              style={{backgroundColor: '#2F4397'}}
+              contentRight={
+                <TouchableRipple onPress={() => navigation.navigate('NewNote')}>
+                  <Image style={styles.btnAdd} source={addImagePath} />
+                </TouchableRipple>
+              }
+            />
+            <View style={styles.noteHeader}>
+              <View style={styles.noteHeaderTitle}>
+                <Text style={styles.noteHeaderTitleText}>My Notes</Text>
               </View>
-            )}
+              <View style={styles.noteHeaderSubTitle}>
+                <Text style={styles.noteHeaderSubTitleText}>
+                  {formattedDate}
+                </Text>
+              </View>
+              <View style={styles.noteHeaderSearch}>
+                <TextInput
+                  style={styles.noteHeaderSearchInput}
+                  outlineColor="#2F4397"
+                  activeOutlineColor="#2F4397"
+                  theme={{roundness: 50}}
+                  placeholder="Search"
+                  mode="outlined"
+                  value={searchValue}
+                  onChangeText={value => setSearchValue(value)}
+                />
+              </View>
+            </View>
+
+            <View style={styles.listContainer}>
+              {filteredNotes.length > 0 ? (
+                <ScrollView style={styles.listContainerScrollView}>
+                  {filteredNotes.map((note, index) => (
+                    <TouchableRipple
+                      style={styles.itemContainer}
+                      key={note.id}
+                      onPress={() => handleEditNote(note)}>
+                      <View key={index}>
+                        <View style={styles.itemTitle}>
+                          <Text numberOfLines={1} style={styles.itemTitleText}>
+                            {note.title}
+                          </Text>
+                        </View>
+                        <View style={styles.itemBody}>
+                          <Text numberOfLines={2} style={styles.itemBodyText}>
+                            {note.body}
+                          </Text>
+                        </View>
+
+                        {/* <View style={styles.itemFooter}>
+                          <Text style={styles.itemFooterText}>
+                            UID : {note.userId}
+                          </Text>
+                        </View> */}
+                      </View>
+                    </TouchableRipple>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No Data</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     </Fragment>
   );
@@ -265,6 +309,7 @@ const styles = StyleSheet.create({
   },
   itemFooter: {},
   itemFooterText: {
+    marginTop: 10,
     fontSize: 13,
     fontWeight: '400',
     color: '#ACACAC',

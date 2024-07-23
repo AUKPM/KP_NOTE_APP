@@ -1,11 +1,22 @@
-// Import necessary libraries
 import React, {useState} from 'react';
-import {View, StyleSheet, Alert, Image, ScrollView} from 'react-native';
+import {View, StyleSheet, Alert, Image, TouchableOpacity} from 'react-native';
 import {Text, TextInput, Button} from 'react-native-paper';
-import {login, logout} from '../../services/api/auth';
 import {useAuth0} from 'react-native-auth0';
-import {ParamListBase, useNavigation} from '@react-navigation/native';
+import {
+  CommonActions,
+  ParamListBase,
+  useNavigation,
+} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {getData, setData} from '../../utils/storage';
+import {login} from '../../services/api/auth/auth';
+import Loading from '../../components/Loading/Loading';
+import {
+  AUTH0_AUDIENCE,
+  AUTH0_DOMAIN,
+  AUTH0_REDIRECT_URL,
+  AUTH0_SCOPE,
+} from '@env';
 
 interface LoginScreenProps {
   title?: string;
@@ -22,47 +33,48 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   const [password, setPassword] = useState('');
   const {authorize, user, isLoading, error} = useAuth0();
 
-  const handleChangeUsername = (value: string) => {
-    setUsername(value);
-  };
-
-  const handleChangePassword = (value: string) => {
-    setPassword(value);
-  };
-
   const handleLogin = async () => {
     try {
-      await authorize({
-        scope: 'openid profile email offline_access',
-        // audience: 'https://dev-yg.us.auth0.com/api/v2/',
-        redirectUrl: 'localhost://callback',
-      }); // ใช้ไคลเอนต์ OktaAuth สำหรับการล็อกอิน
+      const authState = await authorize({
+        scope: AUTH0_SCOPE,
+        audience: AUTH0_AUDIENCE,
+        redirectUrl: AUTH0_REDIRECT_URL,
+      });
+
+      if (authState) {
+        await setData('authState', authState);
+        await setData('idToken', authState?.idToken);
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{name: 'Note'}],
+          }),
+        );
+      } else {
+        Alert.alert('Login failed', 'No authentication data received.');
+      }
     } catch (error) {
       console.error('Login error: ', error);
     }
   };
 
-  if (isLoading) {
-    return (
-      <View>
-        <Text>SDK is Loading</Text>
-      </View>
+  const loginAsGuest = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{name: 'Note'}],
+      }),
     );
+  };
+
+  if (isLoading) {
+    return <Loading />;
   }
 
   return (
     <View style={styles.getStartContainer}>
-      {/* <View>
-        {!user && <Button onPress={handleLogin} title="Log in" />}
-        {user && <Text>Logged in as {user.name}</Text>}
-        {error && <Text>{error.message}</Text>}
-      </View>
-      {<Button onPress={logout} title="Log Out" />} */}
       <View style={styles.coverImageContainer}>
-        <Image
-          source={coverImagePath} // เปลี่ยน path ตามไฟล์ของคุณ
-          style={styles.coverImage}
-        />
+        <Image source={coverImagePath} style={styles.coverImage} />
       </View>
 
       <View style={styles.coverTextContainer}>
@@ -82,16 +94,24 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
         style={styles.btnGetStart}
         mode="contained"
         onPress={() => {
-          navigation.navigate('Note');
-          console.log('Pressed');
+          handleLogin();
         }}>
         <Text style={styles.btnGetStartText}>Get Stated</Text>
       </Button>
+
+      <View style={styles.loginGuest}>
+        <Text style={styles.loginGuestText}>Or login as </Text>
+        <TouchableOpacity
+          onPress={() => {
+            loginAsGuest();
+          }}>
+          <Text style={styles.loginGuestHighlightText}>Guest</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
-// Define the styles
 const styles = StyleSheet.create({
   getStartContainer: {
     flex: 1,
@@ -148,7 +168,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  loginGuest: {
+    marginTop: 16,
+    flexDirection: 'row',
+  },
+  loginGuestText: {},
+  loginGuestHighlightText: {
+    color: '#2F4397',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
 });
 
-// Export the component
 export default LoginScreen;

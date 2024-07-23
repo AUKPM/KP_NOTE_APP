@@ -26,6 +26,17 @@ import {getData, setData} from '../../utils/storage';
 import {NoteType} from '../../types/NoteType';
 import {CommentsType} from '../../types/CommentsType';
 import {RootStackParamList} from '../../navigation/NavigationTypes';
+import {
+  createNote,
+  deleteNoteById,
+  getNoteDataById,
+} from '../../services/api/api/noteService';
+import {checkIfAuth} from '../../utils/utils';
+import {
+  createComment,
+  deleteCommentById,
+  getCommentByNoteId,
+} from '../../services/api/api/commentService';
 
 interface ViewNoteScreenProps {}
 
@@ -33,12 +44,6 @@ const doneImagePath = require('../../assets/image/done.png');
 const deleteImagePath = require('../../assets/image/delete.png');
 const commentsImagePath = require('../../assets/image/comments.png');
 const sendImagePath = require('../../assets/image/send.png');
-
-interface NoteContextType {
-  notes: NoteType[];
-  addNote: (note: NoteType) => void;
-  removeNote: (id: number) => void;
-}
 
 const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
@@ -48,13 +53,23 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
   const [noteBodyValue, setNoteBodyValue] = useState('');
   const [isView, setIsView] = useState(false);
   const [commentValue, setCommentValue] = useState('');
+  const [isAuth, setIsAuth] = useState<Boolean>(false);
   const route = useRoute<RouteProp<RootStackParamList, 'NewNote'>>();
   const noteToEdit = route.params?.note;
 
-  const fetchCommentsData = async () => {
+  const fetchCommentsDataGuest = async () => {
+    console.log('fetchCommentsDataGuest');
     try {
       const commentsData = await getData('commentsData');
+      console.log('commentsData', commentsData);
 
+      const existingComments = commentsData
+        ? Array.isArray(commentsData)
+          ? commentsData
+          : JSON.parse(commentsData)
+        : [];
+
+      console.log('existingComments', existingComments);
       if (commentsData) {
         const newCommentsData: CommentsType[] = !Array.isArray(commentsData)
           ? JSON.parse(commentsData)
@@ -69,43 +84,107 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
       console.error('Failed to fetch comments data:', error);
     }
   };
-  useEffect(() => {
-    fetchCommentsData();
-  }, [commentsData]);
+
+  const fetchCommentsData = async () => {
+    if (noteToEdit) {
+      try {
+        const commentsData = await getCommentByNoteId(noteToEdit.id);
+        if (commentsData) {
+          const newCommentsData: CommentsType[] = !Array.isArray(commentsData)
+            ? JSON.parse(commentsData)
+            : commentsData;
+          const filteredComments = newCommentsData.filter(
+            comment => comment.noteId === noteToEdit?.id,
+          );
+          const sortedComments = filteredComments.sort((a, b) => b.id - a.id);
+          setCommentsData(sortedComments);
+        }
+      } catch (error) {
+        console.error('Failed to fetch comments data:', error);
+      }
+    }
+  };
 
   useEffect(() => {
-    if (noteToEdit) {
-      setIsView(true);
-      setNoteTitleValue(noteToEdit.title);
-      setNoteBodyValue(noteToEdit.body);
-    }
-    getData('noteData').then((notes: NoteType[]) => {
-      if (notes) {
-        if (Array.isArray(notes)) {
-          setNoteData(notes);
+    const initializeComment = async () => {
+      let isUserAuth = await checkIfAuth();
+      if (noteToEdit) {
+        if (!!isUserAuth == false) {
+          fetchCommentsDataGuest();
         } else {
-          setNoteData(JSON.parse(notes));
+          fetchCommentsData();
         }
       }
-    });
-  }, [noteToEdit]);
+    };
+    initializeComment();
+  }, []);
 
-  const addNewNote = (title: string, body: string) => {
+  useEffect(() => {
+    const initialize = async () => {
+      let isUserAuth = await checkIfAuth();
+      setIsAuth(!!isUserAuth);
+
+      if (!!isUserAuth == false) {
+        if (noteToEdit) {
+          setIsView(true);
+          setNoteTitleValue(noteToEdit.title);
+          setNoteBodyValue(noteToEdit.body);
+        }
+
+        getData('noteData').then((notes: NoteType[]) => {
+          if (notes) {
+            if (Array.isArray(notes)) {
+              setNoteData(notes);
+            } else {
+              setNoteData(JSON.parse(notes));
+            }
+          }
+        });
+      } else {
+        if (noteToEdit) {
+          let noteDataAuth = await getNoteDataById(noteToEdit?.id);
+
+          setIsView(true);
+          setNoteTitleValue(noteDataAuth.title);
+          setNoteBodyValue(noteToEdit.body);
+        }
+      }
+    };
+
+    initialize();
+  }, []);
+
+  const addNewNote = async (title: string, body: string) => {
     if (title && body) {
-      const newId =
-        noteData.length > 0
-          ? Math.max(...noteData.map(note => note.id)) + 1
-          : 1;
-      const newNote: NoteType = {
-        id: newId,
-        userId: 1,
-        title,
-        body,
-      };
-      const newNotes = [...noteData, newNote];
-      setNoteData(newNotes);
-      setData('noteData', newNotes);
-      navigation.goBack();
+      if (!isAuth) {
+        const newId =
+          noteData.length > 0
+            ? Math.max(...noteData.map(note => note.id)) + 1
+            : 1;
+        const newNote: NoteType = {
+          id: newId,
+          userId: 1,
+          title,
+          body,
+        };
+        const newNotes = [...noteData, newNote];
+        setNoteData(newNotes);
+        await setData('noteData', newNotes);
+        navigation.goBack();
+      } else {
+        const newNote = {
+          title: title,
+          body: body,
+        };
+        createNote(newNote)
+          .then(response => {
+            console.log('Note created successfully:', response);
+            navigation.goBack();
+          })
+          .catch(error => {
+            console.error('Error creating note:', error);
+          });
+      }
     } else {
       Alert.alert(
         'Note Details Require',
@@ -115,7 +194,7 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
     }
   };
 
-  const saveEditNote = () => {
+  const saveEditNote = async () => {
     if (noteToEdit && noteTitleValue && noteBodyValue) {
       const index = noteData.findIndex(note => note.id === noteToEdit.id);
 
@@ -133,7 +212,7 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
         ];
 
         setNoteData(updatedNotes);
-        setData('noteData', updatedNotes);
+        await setData('noteData', updatedNotes);
 
         navigation.goBack();
       }
@@ -156,32 +235,56 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
 
   const addNewComment = async (body: string) => {
     if (noteToEdit && body) {
-      try {
-        const currentCommentsData = await getData('commentsData');
-        const existingComments = !Array.isArray(currentCommentsData)
-          ? JSON.parse(currentCommentsData)
-          : currentCommentsData;
+      let isUserAuth = await checkIfAuth();
+      if (!!isUserAuth == false) {
+        try {
+          const currentCommentsData = await getData('commentsData');
+          const existingComments = currentCommentsData
+            ? Array.isArray(currentCommentsData)
+              ? currentCommentsData
+              : JSON.parse(currentCommentsData)
+            : [];
 
-        const newId =
-          existingComments.length > 0
-            ? Math.max(
-                ...existingComments.map((comment: CommentsType) => comment.id),
-              ) + 1
-            : 1;
+          console.log(existingComments);
 
-        const newComment: CommentsType = {
-          id: newId,
-          userId: 1,
-          noteId: noteToEdit?.id,
-          body,
+          const newId =
+            existingComments.length > 0
+              ? Math.max(
+                  ...existingComments.map(
+                    (comment: CommentsType) => comment.id,
+                  ),
+                ) + 1
+              : 1;
+
+          const newComment: CommentsType = {
+            id: newId,
+            userId: 1,
+            noteId: noteToEdit?.id,
+            body,
+          };
+
+          const updatedComments = [...existingComments, newComment];
+          await setData('commentsData', updatedComments);
+
+          const filteredCommentsByNoteId = updatedComments.filter(
+            (comment: CommentsType) => comment.noteId === noteToEdit.id,
+          );
+          const sortedComments = filteredCommentsByNoteId.sort(
+            (a, b) => b.id - a.id,
+          );
+          setCommentsData(sortedComments);
+          setCommentValue('');
+        } catch (error) {
+          console.error('Failed to add new comment:', error);
+        }
+      } else {
+        let newComment = {
+          noteId: noteToEdit.id,
+          body: body,
         };
-
-        const updatedComments = [...existingComments, newComment];
-        setCommentsData(updatedComments);
-        await setData('commentsData', updatedComments);
+        createComment(newComment);
         setCommentValue('');
-      } catch (error) {
-        console.error('Failed to add new comment:', error);
+        fetchCommentsData();
       }
     } else {
       Alert.alert(
@@ -192,7 +295,11 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
     }
   };
 
-  const saveEditComment = () => {
+  const handleEditComment = (comment: CommentsType) => {
+    navigation.navigate('EditComment', {comment});
+  };
+
+  const saveEditComment = async () => {
     if (noteToEdit && noteTitleValue && noteBodyValue) {
       const index = noteData.findIndex(note => note.id === noteToEdit.id);
 
@@ -210,7 +317,7 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
         ];
 
         setNoteData(updatedNotes);
-        setData('noteData', updatedNotes);
+        await setData('noteData', updatedNotes);
 
         navigation.goBack();
       }
@@ -233,16 +340,36 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          try {
-            const updatedComments = commentsData.filter(
-              comment => comment.id !== commentId,
-            );
+          let isUserAuth = await checkIfAuth();
+          if (!!isUserAuth == false) {
+            try {
+              const currentCommentsData = await getData('commentsData');
+              console.log('before del : ', currentCommentsData);
+              const updatedComments = currentCommentsData.filter(
+                (comment: CommentsType) =>
+                  !(
+                    comment.noteId === noteToEdit?.id &&
+                    comment.id === commentId
+                  ),
+              );
 
-            setCommentsData(updatedComments);
+              const filteredCommentsByNoteId = updatedComments.filter(
+                (comment: CommentsType) => comment.noteId === noteToEdit?.id,
+              );
+              await setData('commentsData', updatedComments);
 
-            await setData('commentsData', updatedComments);
-          } catch (error) {
-            console.error('Failed to delete comment:', error);
+              const sortedComments = filteredCommentsByNoteId.sort(
+                (a: CommentsType, b: CommentsType) => b.id - a.id,
+              );
+              setCommentsData(sortedComments);
+            } catch (error) {
+              console.error('Failed to delete comment:', error);
+            }
+          } else {
+            if (noteToEdit) {
+              deleteCommentById(commentId);
+              fetchCommentsData();
+            }
           }
         },
       },
@@ -260,22 +387,28 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // Filter out the note to be deleted
-            const updatedNotes = noteData.filter(
-              note => note.id !== noteToEdit.id,
-            );
+            let isUserAuth = await checkIfAuth();
+            if (!!isUserAuth == false) {
+              const updatedNotes = noteData.filter(
+                note => note.id !== noteToEdit.id,
+              );
 
-            const updatedComments = commentsData.filter(
-              comment => comment.noteId !== noteToEdit.id,
-            );
+              const updatedComments = commentsData.filter(
+                comment => comment.noteId !== noteToEdit.id,
+              );
 
-            setNoteData(updatedNotes);
-            setCommentsData(updatedComments);
+              setNoteData(updatedNotes);
+              setCommentsData(updatedComments);
 
-            await setData('noteData', updatedNotes);
-            await setData('commentsData', updatedComments);
-
-            navigation.goBack();
+              await setData('noteData', updatedNotes);
+              await setData('commentsData', updatedComments);
+              navigation.goBack();
+            } else {
+              if (noteToEdit) {
+                await deleteNoteById(noteToEdit.id);
+                navigation.goBack();
+              }
+            }
           },
         },
         {
@@ -305,7 +438,7 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
             {!isView ? (
               <Image style={styles.btnDone} source={doneImagePath} />
             ) : (
-              <View></View>
+              <View style={{width: 35}}></View>
             )}
           </TouchableRipple>
         }
@@ -342,24 +475,35 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
             </View>
             <View style={styles.commentListContainer}>
               <ScrollView style={styles.listContainerScrollView}>
-                {commentsData.map((comments, index) => (
-                  <View key={index} style={styles.commentItemContainer}>
-                    <View style={styles.commentItemTitle}>
-                      <Text style={styles.commentItemTitleText}>
-                        {comments.body}
-                      </Text>
-                    </View>
-                    <TouchableRipple
-                      style={styles.commentItemDelete}
-                      onPress={() => {
-                        handleCommentButtonDelete(comments.id);
-                      }}>
-                      <Image
-                        style={styles.commentItemDeleteIcon}
-                        source={deleteImagePath}></Image>
-                    </TouchableRipple>
-                  </View>
-                ))}
+                {commentsData.length > 0
+                  ? commentsData.map((comments, index) => (
+                      <TouchableRipple
+                        style={styles.commentItemContainer}
+                        key={comments.id}
+                        onPress={() => handleEditComment(comments)}>
+                        <View
+                          key={index}
+                          style={styles.commentItemSubContainer}>
+                          <View style={styles.commentItemTitle}>
+                            <Text
+                              numberOfLines={2}
+                              style={styles.commentItemTitleText}>
+                              {comments.body}
+                            </Text>
+                          </View>
+                          <TouchableRipple
+                            style={styles.commentItemDelete}
+                            onPress={() => {
+                              handleCommentButtonDelete(comments.id);
+                            }}>
+                            <Image
+                              style={styles.commentItemDeleteIcon}
+                              source={deleteImagePath}></Image>
+                          </TouchableRipple>
+                        </View>
+                      </TouchableRipple>
+                    ))
+                  : ''}
               </ScrollView>
             </View>
             <View style={styles.addCommentContainer}>
@@ -459,11 +603,15 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginBottom: 16,
   },
+  commentItemSubContainer: {
+    flex: 1,
+    flexDirection: 'row',
+  },
   commentItemTitle: {
     flex: 1,
     position: 'relative',
     padding: 16,
-    paddingRight: 10
+    paddingRight: 10,
   },
   commentItemTitleText: {},
   commentItemDelete: {

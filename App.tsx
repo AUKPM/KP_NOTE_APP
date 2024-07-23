@@ -1,14 +1,5 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React from 'react';
-import type {PropsWithChildren} from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   useColorScheme,
@@ -17,6 +8,9 @@ import {
 
 import AppNavigator from './src/navigation/AppNavigator';
 import {Auth0Provider} from 'react-native-auth0';
+import {MainProvider} from './src/contexts/MainContext';
+// @ts-ignore
+import {AUTH0_CLIENT_ID, AUTH0_DOMAIN} from '@env';
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'light';
@@ -28,19 +22,19 @@ function App(): React.JSX.Element {
   const bgImagePath = require('./src/assets/image/BG/start_bg2.png');
 
   return (
-    <Auth0Provider
-      domain="https://dev-yg.us.auth0.com"
-      clientId="H9F6QG5SzTKMv0tbmgxLj9LjG1EKVllA">
-      <ImageBackground
-        style={{flex: 1}}
-        source={bgImagePath}
-        resizeMode="cover">
-        <StatusBar
-          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-          backgroundColor={backgroundStyle.backgroundColor}
-        />
-        <AppNavigator />
-      </ImageBackground>
+    <Auth0Provider domain={AUTH0_DOMAIN} clientId={AUTH0_CLIENT_ID}>
+      <MainProvider>
+        <ImageBackground
+          style={{flex: 1}}
+          source={bgImagePath}
+          resizeMode="cover">
+          <StatusBar
+            barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+            backgroundColor={backgroundStyle.backgroundColor}
+          />
+          <AppNavigator />
+        </ImageBackground>
+      </MainProvider>
     </Auth0Provider>
   );
 }
