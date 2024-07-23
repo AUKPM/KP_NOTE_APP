@@ -89,9 +89,9 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
       setIsAuth(!!isUserAuth);
 
       if (!!isUserAuth === true) {
-        fetchNoteData();
+        await fetchNoteData();
       } else {
-        fetchNoteDataGuest();
+        await fetchNoteDataGuest();
       }
       setIsLoading(false);
     };
@@ -122,9 +122,9 @@ const NoteScreen: React.FC<NoteScreenProps> = () => {
       const initializeCallback = async () => {
         isUserAuth = await checkIfAuth();
         if (!!isUserAuth === true) {
-          fetchNoteData();
+          await fetchNoteData();
         } else {
-          fetchNoteDataGuest();
+          await fetchNoteDataGuest();
         }
         setIsLoading(false);
       };

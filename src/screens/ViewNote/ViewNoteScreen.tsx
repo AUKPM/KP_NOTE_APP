@@ -282,9 +282,9 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
           noteId: noteToEdit.id,
           body: body,
         };
-        createComment(newComment);
+        await createComment(newComment);
         setCommentValue('');
-        fetchCommentsData();
+        await fetchCommentsData();
       }
     } else {
       Alert.alert(
@@ -330,8 +330,8 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
     }
   };
 
-  const handleCommentButtonDone = (body: string) => {
-    addNewComment(body);
+  const handleCommentButtonDone = async (body: string) => {
+    await addNewComment(body);
   };
 
   const handleCommentButtonDelete = (commentId: number) => {
@@ -367,7 +367,7 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
             }
           } else {
             if (noteToEdit) {
-              deleteCommentById(commentId);
+              await deleteCommentById(commentId);
               fetchCommentsData();
             }
           }
