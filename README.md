@@ -33,6 +33,7 @@ For a mobile developer skills assessment test at Bangkok Bank.
 - Axios (for API requests)
 - React Navigation
 - Zustand (for state management)
+- React Native Paper
 
 <!---
 AUKPM/AUKPM is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
