@@ -392,16 +392,21 @@ const ViewNoteScreen: React.FC<ViewNoteScreenProps> = () => {
               const updatedNotes = noteData.filter(
                 note => note.id !== noteToEdit.id,
               );
+              setData('noteData', updatedNotes);
+              setNoteData(updatedNotes);
 
-              const updatedComments = commentsData.filter(
-                comment => comment.noteId !== noteToEdit.id,
+              const currentCommentsData = await getData('commentsData');
+              const updatedComments = currentCommentsData.filter(
+                (comment: CommentsType) => comment.noteId !== noteToEdit.id,
+              );
+              await setData('commentsData', updatedComments);
+
+              const filteredCommentsByNoteId = updatedComments.filter(
+                (comment: CommentsType) => comment.noteId === noteToEdit?.id,
               );
 
-              setNoteData(updatedNotes);
-              setCommentsData(updatedComments);
+              setCommentsData(filteredCommentsByNoteId);
 
-              await setData('noteData', updatedNotes);
-              await setData('commentsData', updatedComments);
               navigation.goBack();
             } else {
               if (noteToEdit) {
